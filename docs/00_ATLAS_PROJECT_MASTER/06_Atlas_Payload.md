@@ -197,24 +197,17 @@ El Atlas Payload proporciona:
 flowchart LR
 
 A[Evento]
-
 --> B[OpenAI]
-
 --> C[Atlas Payload]
-
 --> D[Conversation Engine]
-
 --> E[Reservation Engine]
-
 --> F[Dispatch Engine]
-
 --> G[Billing Engine]
-
 --> H[Analytics Engine]
-
-Cada motor únicamente enriquece el mismo Atlas Payload.
 ```
+**Figura 6.1** — Flujo conceptual de enriquecimiento progresivo del Atlas Payload.
 
+Cada motor consume el Atlas Payload, añade información derivada de su responsabilidad y devuelve el mismo objeto enriquecido al siguiente componente del sistema.
 ---
 
 # 6.10 Regla Fundamental
