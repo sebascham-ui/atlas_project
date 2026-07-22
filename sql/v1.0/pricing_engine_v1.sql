@@ -461,29 +461,46 @@ $function$;
 
 
 --------------------------------------------------------
--- NOTA PARA CUANDO SE CABLEE EN n8n (siguiente paso, aún no hecho):
+-- NOTA: YA CABLEADO en el flujo de n8n "ATLAS - Recepción de
+-- Reservaciones (v2)" (2026-07-22). Así quedó resuelto cada punto:
 --
--- - pricing_concept_code: lo va a elegir la IA de extracción (ya normaliza
---   aeropuertos/ciudades), escogiendo de la lista fija de PRICING_CONCEPT.
--- - vehicle_type_code: se calcula en el flujo, no en Supabase --
---   SEDAN si passenger_count 1-3, SUV si 4-6, MAXIVAN si 7+ (v1, confirmado
---   con el usuario), con dos ajustes:
---     a) si el cliente pide explícitamente 4 pasajeros en SEDAN, se
---        respeta -- pero la respuesta al cliente menciona que se
---        recomienda SUV por comodidad (no se fuerza el cambio).
---     b) el equipaje puede forzar el salto a SUV aunque los pasajeros
---        quepan en SEDAN -- ej. 3 pasajeros con 3 maletas grandes cada
---        uno ya no caben. V1 solo necesita una regla razonable (pasajeros
---        + un umbral simple de equipaje); el usuario ya avisó que hay más
---        casos de este tipo que no conoce a detalle y que se resolverán
---        con una entrevista al personal de operación más adelante -- no
---        hay que tratar de cubrir cada escenario ahora.
--- - is_night: se calcula en el flujo a partir de scheduled_departure --
---   asumido "noche" fuera de 06:00-20:00 (ajustable).
--- - client_tier_code: se lee de accounts.pricing_client_tier_id de la
---   cuenta ya resuelta (Villa Santa Mónica / La Valise / JAQ / Publico
---   General) -- requiere que alguien marque manualmente las cuentas de
---   los 3 socios la primera vez (ver ejemplo abajo).
+-- - pricing_concept_code: lo elige la IA de extracción (nodo "Clasificar
+--   y Extraer Reservación"), escogiendo de la lista fija de
+--   PRICING_CONCEPT: si no calza claramente con ninguno, lo deja vacío y
+--   quote_service_price regresa found:false -- el staff calcula a mano.
+-- - vehicle_type_code: se calcula en el nodo Code "Expandir Servicios" --
+--   SEDAN si passenger_count 1-3, SUV si 4-6, MAXIVAN si 7+, con la
+--   regla de equipaje (luggage_count > passenger_count fuerza SUV desde
+--   SEDAN). El ajuste de "4 pasajeros en SEDAN si el cliente lo pide
+--   explícitamente" NO está implementado todavía -- no aplica aún porque
+--   el precio/vehículo calculado solo se muestra al staff (nunca al
+--   cliente en el correo automático), así que no hay mensaje de cliente
+--   que ajustar por ahora. Cuando el staff revise, puede cambiar la
+--   unidad a mano si el cliente pidió SEDAN explícitamente.
+-- - is_night: se calcula en "Expandir Servicios" a partir de
+--   scheduled_departure -- "noche" fuera de 06:00-20:00 (confirmado).
+-- - is_round_trip: se calcula en el nodo "Cotizar Servicio" -- true solo
+--   si service_type es exactamente "ROUND_TRIP" (viaje redondo como un
+--   solo servicio); en cualquier otro caso, false.
+-- - client_tier_code: se resuelve una sola vez por reservación con la
+--   nueva función get_account_pricing_tier() (ver
+--   sql/v1.0/get_account_pricing_tier.sql), llamada desde el nodo
+--   "Buscar Nivel de Precio de Cuenta" justo después de resolver la
+--   cuenta. Si la cuenta no tiene nivel asignado, el flujo usa
+--   PUBLICO_GENERAL como default (mismo comportamiento que la cuenta ya
+--   tendría en Supabase).
+-- - El resultado (vehículo + precio + pago a chofer, o el aviso de "sin
+--   tarifa configurada") se arma en el nodo Code "Resumir Cotizaciones"
+--   y se agrega a la alerta interna "Alerta - Nueva Reservación" -- solo
+--   visible para el staff, tal como se decidió.
+--
+-- Socios con tarifa especial: Villa Santa Mónica ya quedó marcada
+-- (reservaciones@santamonica.mx). La Valise y JAQ quedan pendientes --
+-- el usuario no tiene un correo de contacto específico para ellos por
+-- ahora (se comunican más por WhatsApp/llamada); se resolverá en la
+-- etapa de recopilación histórica de correos. Mientras tanto, cualquier
+-- reservación de esos dos hoteles se cotiza como PUBLICO_GENERAL hasta
+-- que su cuenta se etiquete manualmente.
 --
 -- Ejemplo para marcar una cuenta existente como socio (correr a mano,
 -- una vez identificado el account_id real del socio):
